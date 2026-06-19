@@ -1,0 +1,54 @@
+name: Build Windows EXE (OpenCut Desktop)
+
+# Cómo usarlo:
+# 1. Copia este archivo a tu repo en: .github/workflows/build-windows-exe.yml
+# 2. Haz commit y push a GitHub.
+# 3. En GitHub, ve a la pestaña "Actions" > "Build Windows EXE (OpenCut Desktop)" > "Run workflow".
+# 4. Espera a que termine (unos 5-10 min la primera vez) y descarga el .exe
+#    desde la sección "Artifacts" del resultado del workflow.
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "apps/desktop/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust (stable, actualizado)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo registry and build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: windows-cargo-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            windows-cargo-
+
+      - name: Build opencut-desktop (release)
+        run: cargo build --release -p opencut-desktop
+
+      - name: Rename binary with version tag
+        shell: pwsh
+        run: |
+          Copy-Item "target/release/opencut.exe" "target/release/OpenCut-windows.exe"
+
+      - name: Upload EXE as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenCut-windows-exe
+          path: target/release/OpenCut-windows.exe
+          retention-days: 30
